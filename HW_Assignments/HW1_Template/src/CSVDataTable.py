@@ -1,14 +1,56 @@
-
-from src.BaseDataTable import BaseDataTable
+from HW_Assignments.HW1_Template.src.BaseDataTable import BaseDataTable
 import copy
 import csv
 import logging
 import json
 import os
 import pandas as pd
+import uuid
 
 pd.set_option("display.width", 256)
 pd.set_option('display.max_columns', 20)
+
+
+class Index:
+
+    def __init__(self, index_name, index_columns, index_kind):
+        self._data = {
+            "index_name": index_name,
+            "index_columns": index_columns,
+            "index_kind": index_kind
+        }
+
+        self._buckets = {}
+
+    def compute_index_value(self, row):
+        vs = [row[k] for k in self._data["index_columns"]]
+        i_string = ("_").join(vs)
+        return i_string
+
+    def add_row(self, rid, row):
+        # i_value = self.compute_index_value(row)
+        # b = self._buckets.get(i_value)
+        # if b is None:
+        #     b = []
+        # if (self._data["index_kind"] in ["PRIMARY", "UNIQUE"]) and len(b) > 0 :
+        #     raise DataTableException(DataTableException.duplicate_key, "Duplicate key in Row = " + str(row))
+        # b.append(rid)
+        # self._buckets(i_value) = b
+        pass
+
+    def get_by_key(self, cols):
+        result = self._buckets.get(k)
+        return result
+
+    def delete_row(self, row, rid):
+        key = self.compute_index_value(row)
+        b = self._buckets.get(key, None)
+        if b is not None:
+            b.remove(rid)
+
+    def get_key_columns(self):
+        return self._data["index_columns"]
+
 
 class CSVDataTable(BaseDataTable):
     """
@@ -37,6 +79,11 @@ class CSVDataTable(BaseDataTable):
 
         self._logger.debug("CSVDataTable.__init__: data = " + json.dumps(self._data, indent=2))
 
+        self._indexes = {}
+
+        if key_columns is not None and len(key_columns) > 0:
+            self._add_index("PRIMARY", key_columns)
+
         if rows is not None:
             self._rows = copy.copy(rows)
         else:
@@ -55,33 +102,63 @@ class CSVDataTable(BaseDataTable):
             rows_to_print = self._rows[0:temp_r]
             keys = self._rows[0].keys()
 
-            for i in range(0,CSVDataTable._no_of_separators):
+            for i in range(0, CSVDataTable._no_of_separators):
                 tmp_row = {}
                 for k in keys:
                     tmp_row[k] = "***"
                 rows_to_print.append(tmp_row)
 
-            rows_to_print.extend(self._rows[int(-1*temp_r)-1:-1])
+            rows_to_print.extend(self._rows[int(-1 * temp_r) - 1:-1])
 
         df = pd.DataFrame(rows_to_print)
         result += "\nSome Rows: = \n" + str(df)
 
         return result
 
+    def _add_index(self, i_name, columns):
+        self._indexes[i_name] = Index(i_name, columns, "PRIMARY")
+
     def _add_row(self, r):
+        # rid = str(uuid.uuid4())
+        #
+        # self._rows[rid] = copy.copy(r)
+        #
+        # for idx in self._indexes.values():
+        #     idx.add_row(rid, r)
+
         if self._rows is None:
             self._rows = []
         self._rows.append(r)
+
+    def _delete_from_indexes(self, rid):
+        if self._indexes is not None:
+            row = self._rows[rid]
+            for i, iv in self._indexes.items():
+                iv.delete_row(row, rid)
 
     def _load(self):
 
         dir_info = self._data["connect_info"].get("directory")
         file_n = self._data["connect_info"].get("file_name")
+        delimiter = self._data["connect_info"].get('delimiter', ',')
         full_name = os.path.join(dir_info, file_n)
+
+        t_columns = None
 
         with open(full_name, "r") as txt_file:
             csv_d_rdr = csv.DictReader(txt_file)
             for r in csv_d_rdr:
+
+                if t_columns is None:
+                    t_cols = list(r.keys())
+
+                    key_cols = self._data.get('key_columns', None)
+                    if key_cols is not None:
+                        key_cols = set(key_cols)
+                        # if not key_cols.issubset(set(t_cols)):
+                        #     raise DataTableException(DataTableException.invalid_key_definition,
+                        #                              "Key column not in table")
+
                 self._add_row(r)
 
         self._logger.debug("CSVDataTable._load: Loaded " + str(len(self._rows)) + " rows")
@@ -91,6 +168,14 @@ class CSVDataTable(BaseDataTable):
         Write the information back to a file.
         :return: None
         """
+
+    def key_to_template(self, key):
+
+        tmp = {}
+        for k in self._data['key_columns']:
+            tmp = {k: key[k]}
+
+        return tmp
 
     @staticmethod
     def matches_template(row, template):
@@ -104,6 +189,11 @@ class CSVDataTable(BaseDataTable):
 
         return result
 
+    def _find_by_index(self, i_name, key_fields):
+        idx = self._indexes.get(i_name)
+        b = idx.get_by_key(key_fields)
+        return b
+
     def find_by_primary_key(self, key_fields, field_list=None):
         """
 
@@ -112,7 +202,26 @@ class CSVDataTable(BaseDataTable):
         :return: None, or a dictionary containing the requested fields for the record identified
             by the key.
         """
-        pass
+        idx = self._indexes['PRIMARY']
+        key_cols = idx.get_key_columns()
+        tmp = dict(zip(key_cols, key_fields))
+        result = self.find_by_template(template=tmp, field_list=field_list)
+
+        if result is not None and len(result) > 0:
+            result = result[0]
+        else:
+            result = None
+
+        return result
+
+    def find_by_primary_key_fast(self, key_fields, field_list=None):
+        result = self._find_by_index("PRIMARY", key_fields)
+        if result:
+            final_result = dict(self._rows[result[0]])
+            final_result = CSVDataTable.__project(final_result, field_list)
+            return final_result
+        else:
+            return None
 
     def find_by_template(self, template, field_list=None, limit=None, offset=None, order_by=None):
         """
@@ -125,7 +234,41 @@ class CSVDataTable(BaseDataTable):
         :return: A list containing dictionaries. A dictionary is in the list representing each record
             that matches the template. The dictionary only contains the requested fields.
         """
-        pass
+        result = []
+        for r in self._rows:
+            if CSVDataTable.matches_template(r, template):
+                new_r = CSVDataTable.__project(r, field_list)
+                result.append(new_r)
+
+        return result
+
+    @staticmethod
+    def __project(row, field_list):
+
+        result = {}
+        for f in field_list:
+            result[f] = row[f]
+
+        return result
+
+    def _validate_template_and_fields(self, tmp, fields):
+
+        c_set = set(self._data['table_columns'])
+
+        if tmp is not None:
+            t_set = set(tmp.keys())
+        else:
+            t_set = None
+
+        if fields is not None:
+            f_set = set(fields)
+        else:
+            f_set = None
+
+        # if f_set is not None and not f_set.issubset(c_set):
+        #     raise DataTableException(DataTableException.invalid_input, "Fields are invalid")
+        # if t_set is not None and not t_set.issubset(c_set):
+        #     raise DataTableException(DataTableException.invalid_input, "Fields are invalid")
 
     def delete_by_key(self, key_fields):
         """
@@ -160,6 +303,7 @@ class CSVDataTable(BaseDataTable):
         :param new_values: New values to set for matching fields.
         :return: Number of rows updated.
         """
+        #this part is extra credit
         pass
 
     def insert(self, new_record):
@@ -168,8 +312,22 @@ class CSVDataTable(BaseDataTable):
         :param new_record: A dictionary representing a row to add to the set of records.
         :return: None
         """
-        pass
+
+        if new_record is None:
+            raise ValueError("There's nothing to add.")
+
+        new_cols = set(new_record.keys())
+        tbl_cols = set(self._data["columns"])
+
+        if not new_cols.issubset(tbl_cols):
+            raise ValueError("There's nothing to add.")
+
+        key_cols = self._data.get("key_columns", None)
+
+        if key_cols is not None:
+            key_cols = set(key_cols)
+            if not key_cols.issubset(new_cols):
+                raise ValueError("....")
 
     def get_rows(self):
         return self._rows
-
