@@ -246,6 +246,10 @@ class CSVDataTable(BaseDataTable):
     def __project(row, field_list):
 
         result = {}
+
+        if field_list is None:
+            return row
+
         for f in field_list:
             result[f] = row[f]
 
