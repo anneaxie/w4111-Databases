@@ -282,6 +282,9 @@ class CSVDataTable(BaseDataTable):
         :param template: A template.
         :return: A count of the rows deleted.
         """
+        #same as find_by_primary_key
+        #instead of returning the key, pull it out of the array
+
         pass
 
     def delete_by_template(self, template):
@@ -290,7 +293,7 @@ class CSVDataTable(BaseDataTable):
         :param template: Template to determine rows to delete.
         :return: Number of rows deleted.
         """
-        pass
+        #does find_my_template but deletes rows instead of returning them
 
     def update_by_key(self, key_fields, new_values):
         """
@@ -308,6 +311,10 @@ class CSVDataTable(BaseDataTable):
         :return: Number of rows updated.
         """
         #this part is extra credit
+        #given new values, for every row that matches template,
+        #replace current values with the ones that were passed in
+        #update by key
+
         pass
 
     def insert(self, new_record):
@@ -316,6 +323,7 @@ class CSVDataTable(BaseDataTable):
         :param new_record: A dictionary representing a row to add to the set of records.
         :return: None
         """
+        #take dictionary and stick it in the array
 
         if new_record is None:
             raise ValueError("There's nothing to add.")
@@ -324,14 +332,25 @@ class CSVDataTable(BaseDataTable):
         tbl_cols = set(self._data["columns"])
 
         if not new_cols.issubset(tbl_cols):
-            raise ValueError("There's nothing to add.")
+            raise ValueError("The column doesn't exist.")
 
         key_cols = self._data.get("key_columns", None)
 
         if key_cols is not None:
             key_cols = set(key_cols)
             if not key_cols.issubset(new_cols):
-                raise ValueError("....")
+                raise ValueError("You did not provide all the necessary key columns.")
+
+            for k in key_cols:
+                if new_record.get(k, None) is None:
+                    raise ValueError("Key columns cannot be null.")
+
+            key_tmp = self.get_key_template(new_record) #given a row returns the template
+            if self.find_by_template(key_tmp) is not None \
+                and len(self.find_by_template(key_cols)) > 0:
+                    raise ValueError("You're trying to insert a duplicate.")
+
+        self._rows.append(new_record)
 
     def get_rows(self):
         return self._rows
