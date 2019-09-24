@@ -71,4 +71,86 @@ def run_q(sql, args=None, fetch=True, cur=None, conn=None, commit=True):
     except Exception as e:
         raise(e)
 
-    return (res, data)
+    return res, data
+
+
+def template_to_where_clause(template):
+    if template is None or template == {}:
+        result = (None, None)
+    else:
+        args = []
+        terms = []
+
+        for k, v in template.items():
+            terms.append(" " + k + "=%s")
+            args.append(v)
+
+        w_clause = "AND".join(terms)
+        w_clause = " WHERE " + w_clause
+
+        result = (w_clause, args)
+
+    return result
+
+
+def create_select(table_name, template, fields, order_by=None, limit=None, offset=None, is_select=True):
+
+    if is_select:
+        if fields is None:
+            field_list = " * "
+        else:
+            field_list = " " + ",".join(fields) + " "
+    else:
+        field_list = None
+
+    w_clause, args = template_to_where_clause(template)
+
+    if is_select:
+        sql = "select " + field_list + " from " + table_name + " " + w_clause
+    else:
+        sql = "delete from " + table_name + " " + w_clause
+
+    return (sql, args)
+
+
+def create_insert(table_name, new_row):
+
+    sql = "insert into " + table_name + " "
+
+    cols = list(new_row.keys())
+    cols = ",".join(cols)
+    col_clause = "(" + cols + ")"
+
+    args = list(new_row.values())
+
+    s_stuff = ["%s"]*len(args)
+    s_clause = ",".join(s_stuff)
+    v_clause = " values(" + s_clause + ")"
+
+    sql += " " + col_clause + " " + v_clause
+
+    return sql, args
+
+
+def create_update(table_name, template, changed_cols):
+
+    sql = "update " + table_name + " "
+
+    set_terms = []
+    args = []
+
+    for k, v in changed_cols.items():
+        args.append(v)
+        set_terms.append(k + "=%s")
+
+    set_terms = ",".join(set_terms)
+    set_clause = " set "  + set_terms
+
+    w_clause, args2 = template_to_where_clause(template)
+
+    sql += set_clause + " " + w_clause
+    args.extend(args2)
+
+    return sql, args
+
+

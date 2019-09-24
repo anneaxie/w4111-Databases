@@ -6,6 +6,7 @@ import pandas as pd
 pd.set_option("display.width", 196)
 pd.set_option('display.max_columns', 16)
 
+
 class RDBDataTable(BaseDataTable):
 
     """
@@ -110,7 +111,18 @@ class RDBDataTable(BaseDataTable):
         :param template: A template.
         :return: A count of the rows deleted.
         """
-        pass
+        key_cols = self._data.get("key_columns", None)
+        if key_cols is None:
+            raise ValueError("You did not define by key.")
+        tmp = dict(zip(key_cols, key_fields))
+        result = self.delete_by_template(template=tmp)
+
+        if result is not None and len(result) > 0:
+            result = result[0]
+        else:
+            result = None
+
+        return result
 
     def delete_by_template(self, template):
         """
@@ -118,7 +130,10 @@ class RDBDataTable(BaseDataTable):
         :param template: Template to determine rows to delete.
         :return: Number of rows deleted.
         """
-        sql, args = dbutils.create_select(self._data['table_name'], template=template, fields=None, is_select=False)
+        sql, args = dbutils.create_select(self._data['table_name'],
+                                          template=template,
+                                          fields=None,
+                                          is_select=False)
         res = dbutils.run_q(sql, args=args, commit=True, conn=self._cnx, fetch=False)
         return res
 
@@ -129,6 +144,19 @@ class RDBDataTable(BaseDataTable):
         :param new_values: A dict of field:value to set for updated row.
         :return: Number of rows updated.
         """
+        # same as in CSVDataTable
+        key_cols = self._data.get("key_columns", None)
+        if key_cols is None:
+            raise ValueError("You did not define by key.")
+        tmp = dict(zip(key_cols, key_fields))
+        result = self.update_by_template(template=tmp, new_values=new_values)
+
+        if result is not None and len(result) > 0:
+            result = result[0]
+        else:
+            result = None
+
+        return result
 
     def update_by_template(self, template, new_values):
         """
@@ -137,7 +165,9 @@ class RDBDataTable(BaseDataTable):
         :param new_values: New values to set for matching fields.
         :return: Number of rows updated.
         """
-        sql, args = dbutils.create_update(self._data['table_name'], template=template, changed_cols=new_values)
+        sql, args = dbutils.create_update(self._data['table_name'],
+                                          template=template,
+                                          changed_cols=new_values)
         res = dbutils.run_q(sql, args=args, commit=True, conn=self._cnx, fetch=False)
         return res
 
@@ -150,7 +180,6 @@ class RDBDataTable(BaseDataTable):
         sql, args = dbutils.create_insert(self._data['table_name'], new_record)
         result, d = dbutils.run_q(sql, args=args, commit=True, fetch=False, conn=self._cnx)
         return result
-
 
     def get_rows(self):
         pass
