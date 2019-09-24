@@ -96,8 +96,8 @@ class RDBDataTable(BaseDataTable):
         :return: A list containing dictionaries. A dictionary is in the list representing each record
             that matches the template. The dictionary only contains the requested fields.
         """
-        #take the template and field_list, convert to a select statement
-        #push the select statement into the database
+        # take the template and field_list, convert to a select statement
+        # push the select statement into the database
 
         sql, args = dbutils.create_select(table_name=self._data['table_name'], template=template, fields=field_list)
         res, d = dbutils.run_q(sql, args=args, conn=self._cnx, commit=True, fetch=True)
