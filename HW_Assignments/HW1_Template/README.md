@@ -5,7 +5,9 @@ aax2000
 Note: unit_tests.py should not be used for testing! It has some functions
 that I had used originally to test the CSVDataTable, but I later moved
 all of these functions to csv_table_tests.py and added more tests to this 
-file. 
+file. My understanding is that unit_tests.py is not a necessary file, as 
+I conducted tests for both RDBDataTable.py and CSVDataTable.py separately
+in rdb_table_tests.py and csv_table_tests.py, respectively. 
 ------------------------------------------------------------------
 RDBDataTable
 
