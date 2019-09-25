@@ -144,7 +144,7 @@ def create_update(table_name, template, changed_cols):
         set_terms.append(k + "=%s")
 
     set_terms = ",".join(set_terms)
-    set_clause = " set "  + set_terms
+    set_clause = " set " + set_terms
 
     w_clause, args2 = template_to_where_clause(template)
 

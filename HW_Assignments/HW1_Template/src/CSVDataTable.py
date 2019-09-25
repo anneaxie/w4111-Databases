@@ -168,6 +168,9 @@ class CSVDataTable(BaseDataTable):
         Write the information back to a file.
         :return: None
         """
+        # not writing a save function because
+        # the results can be seen in the unit tests.
+        pass
 
     def key_to_template(self, key):
 
@@ -215,15 +218,6 @@ class CSVDataTable(BaseDataTable):
 
         return result
 
-    def find_by_primary_key_fast(self, key_fields, field_list=None):
-        result = self._find_by_index("PRIMARY", key_fields)
-        if result:
-            final_result = dict(self._rows[result[0]])
-            final_result = CSVDataTable.__project(final_result, field_list)
-            return final_result
-        else:
-            return None
-
     def find_by_template(self, template, field_list=None, limit=None, offset=None, order_by=None):
         """
 
@@ -256,25 +250,6 @@ class CSVDataTable(BaseDataTable):
 
         return result
 
-    def _validate_template_and_fields(self, tmp, fields):
-
-        c_set = set(self._data['table_columns'])
-
-        if tmp is not None:
-            t_set = set(tmp.keys())
-        else:
-            t_set = None
-
-        if fields is not None:
-            f_set = set(fields)
-        else:
-            f_set = None
-
-        # if f_set is not None and not f_set.issubset(c_set):
-        #     raise DataTableException(DataTableException.invalid_input, "Fields are invalid")
-        # if t_set is not None and not t_set.issubset(c_set):
-        #     raise DataTableException(DataTableException.invalid_input, "Fields are invalid")
-
     def delete_by_key(self, key_fields):
         """
 
@@ -286,7 +261,10 @@ class CSVDataTable(BaseDataTable):
         #same as find_by_primary_key
         #instead of returning the key, pull it out of the array
 
-        pass
+        idx = self._indexes['PRIMARY']
+        key_cols = idx.get_key_columns()
+        tmp = dict(zip(key_cols, key_fields))
+        self.delete_by_template(template=tmp)
 
     def delete_by_template(self, template):
         """
@@ -294,7 +272,11 @@ class CSVDataTable(BaseDataTable):
         :param template: Template to determine rows to delete.
         :return: Number of rows deleted.
         """
-        # does find_my_template but deletes rows instead of returning them
+        # does find_by_template but deletes rows instead of returning them
+
+        for r in self._rows:
+            if CSVDataTable.matches_template(r, template):
+                self._rows.remove(r)
 
     def update_by_key(self, key_fields, new_values):
         """
@@ -303,6 +285,18 @@ class CSVDataTable(BaseDataTable):
         :param new_values: A dict of field:value to set for updated row.
         :return: Number of rows updated.
         """
+        key_cols = self._data.get("key_columns", None)
+        if key_cols is None:
+            raise ValueError("You did not define by key.")
+        tmp = dict(zip(key_cols, key_fields))
+        result = self.update_by_template(template=tmp, new_values=new_values)
+
+        if result is not None and len(result) > 0:
+            result = result[0]
+        else:
+            result = None
+
+        return result
 
     def update_by_template(self, template, new_values):
         """
@@ -315,8 +309,13 @@ class CSVDataTable(BaseDataTable):
         # given new values, for every row that matches template,
         # replace current values with the ones that were passed in
         # update by key
+        rows = self.find_by_template(template=template)  # list of dictionaries that match the template
+        for r in rows:
+            for key, value in new_values.items():
+                if key in r.keys():
+                    r[key] = value
 
-        pass
+        return rows
 
     def insert(self, new_record):
         """
