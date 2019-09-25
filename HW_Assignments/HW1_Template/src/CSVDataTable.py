@@ -173,7 +173,8 @@ class CSVDataTable(BaseDataTable):
 
         tmp = {}
         for k in self._data['key_columns']:
-            tmp = {k: key[k]}
+            new_field = {k: key[k]}
+            tmp.update(new_field)
 
         return tmp
 
@@ -293,7 +294,7 @@ class CSVDataTable(BaseDataTable):
         :param template: Template to determine rows to delete.
         :return: Number of rows deleted.
         """
-        #does find_my_template but deletes rows instead of returning them
+        # does find_my_template but deletes rows instead of returning them
 
     def update_by_key(self, key_fields, new_values):
         """
@@ -310,10 +311,10 @@ class CSVDataTable(BaseDataTable):
         :param new_values: New values to set for matching fields.
         :return: Number of rows updated.
         """
-        #this part is extra credit
-        #given new values, for every row that matches template,
-        #replace current values with the ones that were passed in
-        #update by key
+        # this part is extra credit
+        # given new values, for every row that matches template,
+        # replace current values with the ones that were passed in
+        # update by key
 
         pass
 
@@ -323,15 +324,14 @@ class CSVDataTable(BaseDataTable):
         :param new_record: A dictionary representing a row to add to the set of records.
         :return: None
         """
-        #take dictionary and stick it in the array
 
         if new_record is None:
             raise ValueError("There's nothing to add.")
 
         new_cols = set(new_record.keys())
-        tbl_cols = set(self._data["columns"])
+        tbl_cols = set(self._data["key_columns"])
 
-        if not new_cols.issubset(tbl_cols):
+        if not tbl_cols.issubset(new_cols):
             raise ValueError("The column doesn't exist.")
 
         key_cols = self._data.get("key_columns", None)
@@ -345,10 +345,9 @@ class CSVDataTable(BaseDataTable):
                 if new_record.get(k, None) is None:
                     raise ValueError("Key columns cannot be null.")
 
-            key_tmp = self.get_key_template(new_record) #given a row returns the template
-            if self.find_by_template(key_tmp) is not None \
-                and len(self.find_by_template(key_cols)) > 0:
-                    raise ValueError("You're trying to insert a duplicate.")
+            key_tmp = self.key_to_template(new_record)  # given a row returns the template
+            if self.find_by_template(key_tmp) is not None and len(self.find_by_template(key_tmp)) > 0:
+                raise ValueError("You're trying to insert a duplicate.")
 
         self._rows.append(new_record)
 
