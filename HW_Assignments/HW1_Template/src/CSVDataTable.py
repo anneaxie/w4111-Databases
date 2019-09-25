@@ -258,8 +258,8 @@ class CSVDataTable(BaseDataTable):
         :param template: A template.
         :return: A count of the rows deleted.
         """
-        #same as find_by_primary_key
-        #instead of returning the key, pull it out of the array
+        # same as find_by_primary_key
+        # instead of returning the key, pull it out of the array
 
         idx = self._indexes['PRIMARY']
         key_cols = idx.get_key_columns()
