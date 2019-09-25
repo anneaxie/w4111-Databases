@@ -8,6 +8,11 @@ all of these functions to csv_table_tests.py and added more tests to this
 file. My understanding is that unit_tests.py is not a necessary file, as 
 I conducted tests for both RDBDataTable.py and CSVDataTable.py separately
 in rdb_table_tests.py and csv_table_tests.py, respectively. 
+
+Import statements are stemmed from HW_Assignments (eg. BaseDataTable is imported
+with the file path HW_Assignments.HW1_Template.src.BaseDataTable). This
+is simply due to the way I loaded the file in PyCharm and the way I did
+git init. 
 ------------------------------------------------------------------
 RDBDataTable
 
